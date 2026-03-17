@@ -1,6 +1,6 @@
 # Customer Support Agent with Radius
 
-This sample demonstrates an AI-powered customer support agent for the **Contoso Online Store** that uses [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/) and [Azure AI Search](https://learn.microsoft.com/azure/search/), leveraging [Radius](https://radapp.io) Recipes to codify the entire Azure infrastructure.
+This sample demonstrates an AI-powered customer support agent for the **Contoso Online Store** that uses [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/) and [Azure AI Search](https://learn.microsoft.com/azure/search/), leveraging [Radius](https://radapp.io) to codify the entire Azure infrastructure.
 
 ## Sample Overview
 
