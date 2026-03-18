@@ -15,7 +15,7 @@ var prompt = context.resource.properties.prompt
 var model = context.resource.properties.?model ?? 'gpt-4.1-mini'
 var knowledgeBase = context.resource.properties.?knowledgeBase ?? 'agent-kb'
 var enableObservability = context.resource.properties.?enableObservability ?? true
-var agentImage = 'ghcr.io/reshrahim/agent-runtime:1.0'
+var agentImage = 'ghcr.io/reshrahim/agent-runtime:2.0'
 var openAiSkuName = 'S0'
 
 // Postgres connection from environment (passed via connections)

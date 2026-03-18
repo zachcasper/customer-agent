@@ -1,12 +1,12 @@
 # Customer Support Agent with Radius
 
-This sample demonstrates an AI-powered customer support agent for the **Contoso Online Store** that uses [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/) and [Azure AI Search](https://learn.microsoft.com/azure/search/), leveraging [Radius](https://radapp.io) to codify the entire Azure infrastructure.
+This sample demonstrates an AI-powered customer support agent for the **Contoso Online Store** that uses [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/), [Azure AI Search](https://learn.microsoft.com/azure/search/), and [Azure Blob Storage](https://learn.microsoft.com/azure/storage/blobs/), leveraging [Radius](https://radapp.io) to codify the entire Azure infrastructure.
 
 ## Sample Overview
 
 ```
 ┌──────────┐       ┌──────────────────────────────┐       ┌────────────┐
-│          │       │  Agents                      │       │            │
+│          │       │  Agent                       │       │            │
 │ Frontend │       │                              │       │ PostgreSQL │
 │ (nginx)  │       │ ┌──────────────────────────┐ │       │            │
 │          │       │ │    Agent Runtime         │ │       │ Order /    │
@@ -18,17 +18,17 @@ This sample demonstrates an AI-powered customer support agent for the **Contoso 
 │          │       │ │ OpenAI     │ │ Storage    ││       │            │
 └──────────┘       │ └────────────┘ └────────────┘│       └────────────┘
                    │ ┌────────────┐ ┌────────────┐│
-                   │ │ AI Search  │ │ App        ││
-                   │ │ (RAG)      │ │ Insights   ││
-                   │ └────────────┘ └────────────┘│
-                   │                              │
-                   │ Managed Identity + roles     │
-                   └──────────────────────────────┘
+                   │ │ AI Search  │ │ App        ││       ┌────────────┐
+                   │ │ (RAG)      │ │ Insights   ││       │            │
+                   │ └────────────┘ └────────────┘│       │ Blob       │
+                   │                              │──────▶│ Storage    │
+                   │ Managed Identity + roles     │       │ (docs)     │
+                   └──────────────────────────────┘       └────────────┘
 ```
 
 This sample showcases how to deploy an AI agent application that connects to Azure infrastructure using Radius Recipes. The sample includes:
 
-- Resource type definitions for AI agents and PostgreSQL in `radius/types/`
+- Resource type definitions for AI agents, PostgreSQL, and Blob Storage in `radius/types/`
 - Bicep recipes for deploying infrastructure to Azure in `radius/recipes/`
 - `app.bicep` that defines the agent and frontend, with connections to infrastructure
 
@@ -45,6 +45,7 @@ This sample showcases how to deploy an AI agent application that connects to Azu
 ```bash
 rad resource-type create -f radius/types/agent.yaml
 rad resource-type create -f radius/types/postgreSqlDatabases.yaml
+rad resource-type create -f radius/types/blobStorages.yaml
 ```
 
 ### 2. Bicep extensions
@@ -53,13 +54,14 @@ rad resource-type create -f radius/types/postgreSqlDatabases.yaml
 >
 > No action is needed in this step.
 
-Because we created new Resource Types, Bicep extensions need to be created and referenced in `bicepconfig.json`. The extensions have already been created as `radius/extensions/radiusai.tgz` and `radius/extensions/radiusdata.tgz`. The `bicepconfig.json` has been created.
+Because we created new Resource Types, Bicep extensions need to be created and referenced in `bicepconfig.json`. The extensions have already been created as `radius/extensions/radiusai.tgz`, `radius/extensions/radiusdata.tgz`, and `radius/extensions/radiusstorage.tgz`. The `bicepconfig.json` has been created.
 
 If you make changes to the type definitions, run the following commands to regenerate the extensions:
 
 ```bash
 rad bicep publish-extension -f radius/types/agent.yaml --target radius/extensions/radiusai.tgz
 rad bicep publish-extension -f radius/types/postgreSqlDatabases.yaml --target radius/extensions/radiusdata.tgz
+rad bicep publish-extension -f radius/types/blobStorages.yaml --target radius/extensions/radiusstorage.tgz
 ```
 
 ### 3. Publish Recipes
@@ -74,17 +76,22 @@ This sample uses the following Recipes:
 
 - `recipes/agent.bicep` — Provisions Managed Identity, Azure OpenAI + model deployment, Storage Account, AI Search, Log Analytics, Application Insights, role assignments, and the agent-runtime container
 - `recipes/postgres.bicep` — Provisions Azure Database for PostgreSQL Flexible Server with Entra ID auth and seeds sample order data
+- `recipes/blobstorage.bicep` — Provisions Azure Storage Account with a blob container for knowledge base documents
 
 To republish the recipes after changes:
 
 ```bash
 rad bicep publish \
   --file radius/recipes/agent.bicep \
-  --target ghcr.io/reshrahim/recipes/agent:1.0
+  --target br:ghcr.io/reshrahim/recipes/agent:1.0
 
 rad bicep publish \
   --file radius/recipes/postgres.bicep \
-  --target ghcr.io/reshrahim/recipes/postgres:1.0
+  --target br:ghcr.io/reshrahim/recipes/postgres:1.0
+
+rad bicep publish \
+  --file radius/recipes/blobstorage.bicep \
+  --target br:ghcr.io/reshrahim/recipes/blobstorage:1.0
 ```
 
 ### 4. Create a Radius Environment
@@ -135,6 +142,7 @@ $ rad recipe list
 RECIPE    TYPE                              TEMPLATE KIND  TEMPLATE
 default   Radius.AI/agents                  bicep          ghcr.io/reshrahim/recipes/agent:1.0
 default   Radius.Data/postgreSqlDatabases   bicep          ghcr.io/reshrahim/recipes/postgres:1.0
+default   Radius.Storage/blobStorages       bicep          ghcr.io/reshrahim/recipes/blobstorage:1.0
 ```
 
 ### 5. Upload Knowledge Base Documents
@@ -166,6 +174,8 @@ Deployment may take 15-20 minutes for Azure resources.
 Deployment In Progress...
 
 Completed            customer-agent  Applications.Core/applications
+Completed            postgresql      Radius.Data/postgreSqlDatabases
+Completed            blobstorage     Radius.Storage/blobStorages
 Completed            support-agent   Radius.AI/agents
 Completed            frontend-ui     Applications.Core/containers
 
@@ -177,7 +187,7 @@ Resources:
     frontend-ui     Applications.Core/containers
 ```
 
-### 6. Access the application
+### 7. Access the application
 
 ```bash
 kubectl port-forward svc/frontend-ui 3000:3000 -n azure-customer-agent
@@ -185,7 +195,7 @@ kubectl port-forward svc/frontend-ui 3000:3000 -n azure-customer-agent
 
 Open **http://localhost:3000** in your browser.
 
-### 7. Clean up
+### 8. Clean up
 
 Delete the application:
 

@@ -16,7 +16,7 @@ param applicationName string = 'customer-agent'
 param registry string = 'ghcr.io/reshrahim'
 
 @description('Image tag')
-param tag string = '1.1'
+param tag string = '2.0'
 
 @description('Azure OpenAI model deployment name')
 param model string = 'gpt-4.1-mini'
@@ -92,7 +92,7 @@ resource webapp 'Applications.Core/containers@2023-10-01-preview' = {
     application: app.id
     environment: environment
     container: {
-      image: '${registry}/agent-ui:${tag}'
+      image: '${registry}/frontend-ui:${tag}'
       ports: {
         http: {
           containerPort: 3000
