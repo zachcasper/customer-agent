@@ -11,6 +11,7 @@ from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from openai import AzureOpenAI
@@ -817,6 +818,150 @@ async def chat(request: ChatRequest):
         sources=list(set(tool_sources)),
         timestamp=datetime.utcnow().isoformat(),
     )
+
+
+@app.post("/chat/stream")
+async def chat_stream(request: ChatRequest):
+    """SSE streaming version of /chat. Emits events for tool calls, results, tokens, and done/error."""
+    logger.info("Chat stream [session=%s]: %s", request.session_id, request.message[:100])
+
+    history = _load_session(request.session_id)
+    if request.session_id not in sessions:
+        sessions[request.session_id] = history
+
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT}
+    ]
+    messages.extend(sessions[request.session_id][-20:])
+    messages.append({"role": "user", "content": request.message})
+
+    tool_sources: list[str] = []
+
+    def event_generator():
+        nonlocal messages, tool_sources
+        reply_text = ""
+
+        if not openai_client:
+            # Demo mode
+            demo_text = (
+                f"Hi there! Thanks for reaching out to **Contoso Online Store** support.\n\n"
+                f"You asked: *\"{request.message}\"*\n\n"
+                "I'm currently running in **demo mode** — the AI model isn't connected yet. "
+                "Once it's set up, I'll be able to help you with:\n\n"
+                "- Order tracking — just give me your order number\n"
+                "- Returns & exchanges — easy 30-day returns\n"
+                "- Shipping updates — where's your package?\n"
+                "- Billing questions — refunds, charges, payments\n\n"
+                "Check back soon!"
+            )
+            yield f"data: {json.dumps({'type': 'token', 'content': demo_text})}\n\n"
+            reply_text = demo_text
+            sessions[request.session_id].append({"role": "user", "content": request.message})
+            sessions[request.session_id].append({"role": "assistant", "content": reply_text})
+            _save_session(request.session_id)
+            yield f"data: {json.dumps({'type': 'done', 'sources': []})}\n\n"
+            return
+
+        try:
+            max_iterations = 5
+            for _ in range(max_iterations):
+                response = openai_client.chat.completions.create(
+                    model=AZURE_OPENAI_DEPLOYMENT,
+                    messages=messages,
+                    tools=TOOLS,
+                    temperature=0.7,
+                    max_tokens=800,
+                    stream=True,
+                )
+
+                collected_tool_calls: dict[int, dict] = {}
+                collected_content: list[str] = []
+                finish_reason = None
+
+                for chunk in response:
+                    delta = chunk.choices[0].delta if chunk.choices else None
+                    if not delta:
+                        continue
+
+                    finish_reason = chunk.choices[0].finish_reason
+
+                    if delta.tool_calls:
+                        for tc_delta in delta.tool_calls:
+                            idx = tc_delta.index
+                            if idx not in collected_tool_calls:
+                                collected_tool_calls[idx] = {
+                                    "id": tc_delta.id or "",
+                                    "name": tc_delta.function.name or "" if tc_delta.function else "",
+                                    "arguments": ""
+                                }
+                            if tc_delta.id:
+                                collected_tool_calls[idx]["id"] = tc_delta.id
+                            if tc_delta.function:
+                                if tc_delta.function.name:
+                                    collected_tool_calls[idx]["name"] = tc_delta.function.name
+                                if tc_delta.function.arguments:
+                                    collected_tool_calls[idx]["arguments"] += tc_delta.function.arguments
+
+                    if delta.content:
+                        collected_content.append(delta.content)
+                        yield f"data: {json.dumps({'type': 'token', 'content': delta.content})}\n\n"
+
+                if finish_reason == "tool_calls" and collected_tool_calls:
+                    tool_calls_for_message = []
+                    for idx in sorted(collected_tool_calls.keys()):
+                        tc = collected_tool_calls[idx]
+                        tool_calls_for_message.append({
+                            "id": tc["id"],
+                            "type": "function",
+                            "function": {"name": tc["name"], "arguments": tc["arguments"]}
+                        })
+
+                    messages.append({
+                        "role": "assistant",
+                        "tool_calls": tool_calls_for_message,
+                        "content": None
+                    })
+
+                    for idx in sorted(collected_tool_calls.keys()):
+                        tc = collected_tool_calls[idx]
+                        fn_name = tc["name"]
+                        fn_args = json.loads(tc["arguments"])
+
+                        yield f"data: {json.dumps({'type': 'tool_call', 'name': fn_name, 'arguments': fn_args})}\n\n"
+
+                        result = _execute_tool(fn_name, fn_args)
+                        tool_sources.append(fn_name)
+
+                        display_result = result[:200] + "..." if len(result) > 200 else result
+                        yield f"data: {json.dumps({'type': 'tool_result', 'name': fn_name, 'result': display_result})}\n\n"
+
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tc["id"],
+                            "content": result,
+                        })
+
+                    continue
+
+                reply_text = "".join(collected_content)
+                break
+            else:
+                fallback = "I was unable to complete your request. Please try again."
+                yield f"data: {json.dumps({'type': 'token', 'content': fallback})}\n\n"
+                reply_text = fallback
+
+        except Exception as e:
+            logger.error("Streaming OpenAI call failed: %s", e)
+            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+            return
+
+        sessions[request.session_id].append({"role": "user", "content": request.message})
+        sessions[request.session_id].append({"role": "assistant", "content": reply_text})
+        _save_session(request.session_id)
+
+        yield f"data: {json.dumps({'type': 'done', 'sources': list(set(tool_sources))})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @app.get("/sessions/{session_id}")

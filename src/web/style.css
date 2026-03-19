@@ -259,3 +259,118 @@ h1 {
   background: #27272a;
   border-radius: 3px;
 }
+
+/* Tool call visibility */
+.tool-steps {
+  margin-bottom: 8px;
+  border: 1px solid #27272a;
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 13px;
+}
+
+.tool-steps-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #18181b;
+  cursor: pointer;
+  user-select: none;
+  color: #a1a1aa;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tool-steps-header:hover {
+  background: #1f1f23;
+}
+
+.tool-steps-toggle {
+  font-size: 10px;
+  transition: transform 0.2s;
+  color: #52525b;
+}
+
+.tool-steps.collapsed .tool-steps-toggle {
+  transform: rotate(-90deg);
+}
+
+.tool-steps-body {
+  border-top: 1px solid #27272a;
+}
+
+.tool-steps.collapsed .tool-steps-body {
+  display: none;
+}
+
+.tool-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #1e1e22;
+  color: #a1a1aa;
+}
+
+.tool-step:last-child {
+  border-bottom: none;
+}
+
+.tool-step-icon {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.tool-step-icon.pending {
+  animation: spin 1s linear infinite;
+}
+
+.tool-step-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.tool-step-name {
+  color: #d4d4d8;
+  font-weight: 500;
+}
+
+.tool-step-result {
+  color: #71717a;
+  font-size: 12px;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Streaming cursor effect */
+.streaming .message-content::after {
+  content: '▍';
+  animation: cursor-blink 1s steps(2) infinite;
+  color: #60a5fa;
+  font-weight: 100;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Disabled send button during streaming */
+#sendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #1e3a5f;
+}
+
+#sendBtn:disabled:hover {
+  background: #1e3a5f;
+}

@@ -51,6 +51,7 @@
   <script>
     const API_BASE = '';
     const sessionId = 'session-' + Math.random().toString(36).substring(2, 10);
+    let isSending = false;
 
     async function checkHealth() {
       const statusEl = document.getElementById('status');
@@ -66,46 +67,185 @@
       }
     }
 
+    const TOOL_LABELS = {
+      lookup_order: 'Looking up order',
+      check_return_eligibility: 'Checking return eligibility',
+      cancel_order: 'Cancelling order',
+      initiate_return: 'Initiating return',
+      create_support_ticket: 'Creating support ticket',
+      search_knowledge_base: 'Searching knowledge base',
+      get_recent_orders: 'Fetching recent orders',
+    };
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
     async function sendMessage() {
+      if (isSending) return;
       const input = document.getElementById('messageInput');
+      const sendBtn = document.getElementById('sendBtn');
       const message = input.value.trim();
       if (!message) return;
 
+      isSending = true;
+      sendBtn.disabled = true;
       appendMessage('user', message);
       input.value = '';
-      input.focus();
 
-      const typingEl = appendMessage('assistant', '<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>');
-      typingEl.classList.add('typing');
+      // Create assistant message container
+      const msgEl = document.createElement('div');
+      msgEl.className = 'message assistant streaming';
+      msgEl.innerHTML = '<div class="avatar">CS</div><div class="message-content"></div>';
+      document.getElementById('chatArea').appendChild(msgEl);
+      const contentEl = msgEl.querySelector('.message-content');
+
+      // Tool steps container (hidden until a tool_call event arrives)
+      let toolStepsEl = null;
+      let toolStepsBody = null;
+      let toolCount = 0;
+
+      // Text accumulator
+      let fullText = '';
 
       try {
-        const res = await fetch(`${API_BASE}/chat`, {
+        const res = await fetch(`${API_BASE}/chat/stream`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message, session_id: sessionId }),
         });
-        const data = await res.json();
 
-        typingEl.querySelector('.message-content').innerHTML = formatMarkdown(data.reply);
-        typingEl.classList.remove('typing');
-
-        if (data.sources && data.sources.length > 0) {
-          const ACTION_TOOLS = ['cancel_order', 'initiate_return', 'create_support_ticket'];
-          const sourcesHtml = data.sources
-            .map(s => {
-              const cls = ACTION_TOOLS.includes(s) ? 'source-tag action' : 'source-tag';
-              const icon = ACTION_TOOLS.includes(s) ? '⚡' : '🔍';
-              return `<span class="${cls}">${icon} ${s}</span>`;
-            })
-            .join('');
-          typingEl.querySelector('.message-content').innerHTML +=
-            `<div class="sources">Tools used: ${sourcesHtml}</div>`;
+        if (!res.ok) {
+          throw new Error(`Server error: ${res.status}`);
         }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // keep incomplete line in buffer
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            let event;
+            try {
+              event = JSON.parse(line.slice(6));
+            } catch { continue; }
+
+            if (event.type === 'tool_call') {
+              // Create tool steps container on first tool call
+              if (!toolStepsEl) {
+                toolStepsEl = document.createElement('div');
+                toolStepsEl.className = 'tool-steps';
+                toolStepsEl.innerHTML =
+                  '<div class="tool-steps-header" onclick="this.parentElement.classList.toggle(\'collapsed\')">' +
+                    '<span class="tool-steps-toggle">▼</span>' +
+                    '<span class="tool-steps-label">🔧 Agent actions</span>' +
+                  '</div>' +
+                  '<div class="tool-steps-body"></div>';
+                contentEl.appendChild(toolStepsEl);
+                toolStepsBody = toolStepsEl.querySelector('.tool-steps-body');
+              }
+
+              toolCount++;
+              const label = TOOL_LABELS[event.name] || event.name;
+              const argSummary = Object.values(event.arguments || {}).join(', ');
+              const stepEl = document.createElement('div');
+              stepEl.className = 'tool-step';
+              stepEl.id = 'tool-step-' + toolCount;
+              stepEl.innerHTML =
+                '<div class="tool-step-icon pending">⏳</div>' +
+                '<div class="tool-step-content">' +
+                  '<div class="tool-step-name">' + escapeHtml(label + (argSummary ? ' — ' + argSummary : '')) + '</div>' +
+                '</div>';
+              toolStepsBody.appendChild(stepEl);
+              scrollToBottom();
+            }
+
+            else if (event.type === 'tool_result') {
+              // Update the latest tool step with a checkmark and result
+              const stepEl = document.getElementById('tool-step-' + toolCount);
+              if (stepEl) {
+                const iconEl = stepEl.querySelector('.tool-step-icon');
+                iconEl.textContent = '✓';
+                iconEl.classList.remove('pending');
+                // Add truncated result
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'tool-step-result';
+                resultDiv.textContent = summarizeResult(event.result);
+                stepEl.querySelector('.tool-step-content').appendChild(resultDiv);
+              }
+              scrollToBottom();
+            }
+
+            else if (event.type === 'token') {
+              fullText += event.content;
+              // Re-render with markdown
+              renderText(contentEl, toolStepsEl, fullText);
+              scrollToBottom();
+            }
+
+            else if (event.type === 'done') {
+              // Streaming complete
+              msgEl.classList.remove('streaming');
+            }
+
+            else if (event.type === 'error') {
+              msgEl.classList.remove('streaming');
+              msgEl.classList.add('error');
+              contentEl.textContent = '😔 Sorry, something went wrong. Please try again.';
+            }
+          }
+        }
+      } catch (e) {
+        msgEl.classList.remove('streaming');
+        msgEl.classList.add('error');
+        contentEl.textContent = '😔 Sorry, I couldn\'t connect. Please try again.';
+      } finally {
+        isSending = false;
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    function renderText(contentEl, toolStepsEl, text) {
+      // Preserve tool steps container, then add formatted text
+      const formatted = formatMarkdown(escapeHtml(text));
+      if (toolStepsEl) {
+        // Keep tool steps, add text after
+        const textNode = contentEl.querySelector('.response-text');
+        if (textNode) {
+          textNode.innerHTML = formatted;
+        } else {
+          const div = document.createElement('div');
+          div.className = 'response-text';
+          div.innerHTML = formatted;
+          contentEl.appendChild(div);
+        }
+      } else {
+        contentEl.innerHTML = formatted;
+      }
+    }
+
+    function summarizeResult(resultStr) {
+      try {
+        const obj = JSON.parse(resultStr);
+        if (obj.error) return '⚠ ' + obj.error;
+        if (obj.success === true) return '✓ ' + (obj.message || 'Success');
+        if (obj.order_number) return 'Order ' + obj.order_number + ' — ' + (obj.status || 'found');
+        if (obj.eligible === true) return 'Eligible for return';
+        if (obj.eligible === false) return obj.reason || 'Not eligible';
+        return resultStr.substring(0, 80);
       } catch {
-        typingEl.querySelector('.message-content').textContent =
-          '😔 Sorry, I couldn\'t process that. Please try again in a moment.';
-        typingEl.classList.remove('typing');
-        typingEl.classList.add('error');
+        return resultStr.substring(0, 80);
       }
     }
 
@@ -114,10 +254,15 @@
       const div = document.createElement('div');
       div.className = `message ${role}`;
       const avatar = role === 'user' ? 'You' : 'CS';
-      div.innerHTML = `<div class="avatar">${avatar}</div><div class="message-content">${formatMarkdown(content)}</div>`;
+      div.innerHTML = `<div class="avatar">${avatar}</div><div class="message-content">${formatMarkdown(escapeHtml(content))}</div>`;
       chatArea.appendChild(div);
-      chatArea.scrollTop = chatArea.scrollHeight;
+      scrollToBottom();
       return div;
+    }
+
+    function scrollToBottom() {
+      const chatArea = document.getElementById('chatArea');
+      chatArea.scrollTop = chatArea.scrollHeight;
     }
 
     function formatMarkdown(text) {
