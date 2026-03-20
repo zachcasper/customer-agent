@@ -434,20 +434,10 @@ The agent will:
 3. Tell you the eligibility result and ask for confirmation
 4. After you confirm, call `initiate_return` to create the return record
 
-**Order cancellation** (write action with confirmation):
-> "I need to cancel order ORD-10005"
-
-The agent will look up the order, confirm it's in "Pending" status, tell you the refund amount, and ask for confirmation before calling `cancel_order`.
-
 **Escalation** (knowing when to hand off):
 > "This is unacceptable, I've been waiting 3 weeks and nobody can help me. I want to speak to a manager."
 
 The agent will recognize the customer's frustration and call `create_support_ticket` to escalate to a human agent.
-
-**Combined question** (parallel tool calls):
-> "Can you check on order ORD-10004 and also tell me about your loyalty program?"
-
-The agent may call `lookup_order` and `search_knowledge_base` in the same turn, then combine the results into a single response.
 
 ### Step 9: Clean up
 
