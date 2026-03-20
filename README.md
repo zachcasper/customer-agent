@@ -133,7 +133,7 @@ ucp                  1/1     Running   0          1m
 
 ### Step 1: Create the resource types required by the application
 
-Resource types are application abstractions that are infrastructure agnostic. They define the properties that developers can set when they declare resources in their `app.bicep`, and they map to recipes that provision the underlying infrastructure.
+Resource types are application abstractions that are infrastructure/cloud provider agnostic. They define the properties that developers can set when they declare resources in their `app.bicep`, and they map to recipes that provision the underlying infrastructure.
 
 Each type definition in `radius/types/` is a YAML file that declares:
 - A **namespace and type name** (e.g., `Radius.AI/agents`)
@@ -214,25 +214,25 @@ This sample has three recipes:
 
 The key insight is that the **developer never sees these recipes**. They just declare `resource agent 'Radius.AI/agents' = { ... }` in their `app.bicep`, and Radius automatically finds and executes the matching recipe configured by the platform engineer in the environment.
 
-Recipes are published to OCI registries (like container images). If you make changes, republish them:
+Recipes are published to OCI registries (like container images). If you make changes, republish them to your own registry:
 
 ```bash
 rad bicep publish \
   --file radius/recipes/agent.bicep \
-  --target br:ghcr.io/reshrahim/recipes/agent:1.0
+  --target br:ghcr.io/<org-name>/recipes/agent:1.0
 
 rad bicep publish \
   --file radius/recipes/postgres.bicep \
-  --target br:ghcr.io/reshrahim/recipes/postgres:1.0
+  --target br:ghcr.io/<org-name>/recipes/postgres:1.0
 
 rad bicep publish \
   --file radius/recipes/blobstorage.bicep \
-  --target br:ghcr.io/reshrahim/recipes/blobstorage:1.0
+  --target br:ghcr.io/<org-name>/recipes/blobstorage:1.0
 ```
 
 ### Step 4: Create the Radius Environment
 
-A Radius Environment is where you configure *which* recipes to use and *where* Azure resources should be provisioned. 
+A Radius Environment is where you configure *which* recipes to use and *where* Azure resources should be provisioned.
 
 The `radius/env.bicep` file does three things:
 1. Creates the environment with an Azure provider scope (subscription + resource group)
@@ -343,9 +343,9 @@ default   Radius.Storage/blobStorages       bicep          ghcr.io/reshrahim/rec
 The agent uses Azure AI Search for knowledge retrieval (RAG). The search index is populated by an indexer that reads documents from the blob storage container. In this step, you upload the Contoso policy documents, so the agent can answer questions about shipping, returns, and the loyalty program.
 
 The `knowledge-base/` folder contains three PDF documents:
-- `contoso-shipping-policy.pdf` — Shipping methods, costs, delivery times, address changes
-- `contoso-return-refund-policy.pdf` — Return windows, conditions, refund process, exchanges
-- `contoso-loyalty-program.pdf` — Points system, tiers, rewards redemption
+- `contoso-shipping-policy.pdf` 
+- `contoso-return-refund-policy.pdf` 
+- `contoso-loyalty-program.pdf` 
 
 Upload them to the blob storage account that was provisioned in the previous step:
 
