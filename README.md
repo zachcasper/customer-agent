@@ -30,7 +30,7 @@ Below is a high-level architecture diagram of the application.
                    │ │ (RAG)      │ │ Insights   ││       │            │
                    │ └────────────┘ └────────────┘│       │ Blob       │
                    │                              │──────▶│ Storage    │
-                   │ Managed Identity + roles     │       │ (docs)     │
+                   │ API keys + Managed Identity  │       │ (docs)     │
                    └──────────────────────────────┘       └────────────┘
 ```
 
@@ -133,11 +133,11 @@ ucp                  1/1     Running   0          1m
 
 ### Step 1: Create the resource types required by the application
 
-Resource types are application abstractions — essentially teaching Radius what your application needs. They define the properties that developers can set when they declare resources in their `app.bicep`, and they map to recipes that provision the underlying infrastructure.
+Resource types are application abstractions that are infrastructure agnostic. They define the properties that developers can set when they declare resources in their `app.bicep`, and they map to recipes that provision the underlying infrastructure.
 
 Each type definition in `radius/types/` is a YAML file that declares:
 - A **namespace and type name** (e.g., `Radius.AI/agents`)
-- A **schema** describing the properties developers can set (like `prompt`, `model`, `knowledgeBase`)
+- A **schema** describing the properties developers can set (like `prompt`, `model`, `enableObservability`)
 - **Read-only properties** that recipes output back (like `agentEndpoint`)
 
 For example, `radius/types/agent.yaml` defines the `Radius.AI/agents` type. A developer using this type only needs to specify a prompt and model name — they don't need to know that behind the scenes, the recipe provisions 8 Azure resources with role assignments and networking.
@@ -167,7 +167,7 @@ Radius.Storage/blobStorages             Radius.Storage           ["2025-08-01-pr
 
 ### Step 2: Bicep extensions
 
-Bicep extensions are similar to your package libraries. An extension is generated from a resource type definition and contains the necessary metadata and type information for Bicep to provide type safety and autocompletion when developers write their `app.bicep`.
+Bicep extensions are similar to libraries that you import into your code. An extension is generated from a resource type definition and contains the necessary metadata and type information for Bicep to provide type safety and autocompletion when developers write their `app.bicep`.
 
 > [!NOTE]
 >
@@ -208,7 +208,7 @@ This sample has three recipes:
 
 | Recipe | Type | What it provisions |
 |--------|------|--------------------|  
-| `recipes/agent.bicep` | `Radius.AI/agents` | Managed Identity, Azure OpenAI + model deployment, AI Search (index + indexer + data source), Log Analytics, App Insights, role assignments, and the `agent-runtime` Kubernetes container |
+| `recipes/agent.bicep` | `Radius.AI/agents` | Azure OpenAI + model deployment, AI Search (index + indexer + data source), Log Analytics + App Insights (for observability), Managed Identity (for deployment scripts), role assignments, and the `agent-runtime` Kubernetes container |
 | `recipes/postgres.bicep` | `Radius.Data/postgreSqlDatabases` | Azure Database for PostgreSQL Flexible Server, database, firewall rule, and seeds 5 sample orders |
 | `recipes/blobstorage.bicep` | `Radius.Storage/blobStorages` | Azure Storage Account with a blob container |
 
