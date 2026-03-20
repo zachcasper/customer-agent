@@ -43,9 +43,6 @@ IMPORTANT: You MUST only reference information that is explicitly present in the
 
 Always sign off warmly and ask if there's anything else you can help with.'''
 
-@description('AI Search index name for knowledge retrieval')
-param knowledgeBase string = 'support-kb'
-
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: applicationName
   location: 'global'
@@ -71,8 +68,7 @@ resource agent 'Radius.AI/agents@2025-08-01-preview' = {
     environment: environment
     prompt: prompt
     model: model
-    knowledgeBase: knowledgeBase
-    enableObservability: true
+    enableObservability: false
     connections: {
       postgres: {
         source: postgresql.id

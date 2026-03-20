@@ -6,11 +6,11 @@ This sample demonstrates how to build and deploy an **agentic AI application** u
 
 The application is a customer support agent for the fictional **Contoso Online Store**. Unlike a simple chatbot, this agent autonomously reasons about customer requests, decides which tools to use, takes actions (like cancelling orders or initiating returns), and chains multiple operations together — all powered by [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/) function calling.
 
-### Why
+### Why Radius?
 
-Building AI applications today is hard. A developer who just wants to build a customer support agent goes through the toil of understanding infrastructure dependencies like Azure OpenAI deployments, configuring AI Search indexes, setting up managed identities with the right RBAC roles, provisioning storage accounts, current environments, and more over conforming to the requirements of the enterprise. This creates a high barrier to entry for developers and slows down innovation.
+Building AI applications today is hard. A developer who just wants to build an AI agent goes through the toil of understanding infrastructure dependencies like Azure OpenAI deployments, configuring AI Search indexes, setting up managed identities with the right RBAC roles, provisioning storage accounts, current environments, and more over conforming to the requirements of the enterprise. This creates a high barrier to entry for developers and slows down innovation.
 
-Radius solves this by enabling **platform engineers** codify all that infrastructure into reusable **Recipes**. The developer just declares what they need in a simple `app.bicep` (an AI agent, a database, a frontend) and everything else is handled behind the scenes.
+Radius solves this by enabling **platform engineers** codify all that infrastructure into reusable **Recipes** that could be shared across an organization. The developer just declares what they need in a simple `app.bicep` (an AI agent, a database, a frontend) and everything else is handled behind the scenes.
 
 Below is a high-level architecture diagram of the application.
 
@@ -81,9 +81,10 @@ By the end of this walkthrough, you will:
 Before you begin, you need:
 
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) with an active subscription
-- [Radius CLI](https://docs.radapp.io/tutorials/install-radius/)
-- A Kubernetes cluster with [Radius installed](https://docs.radapp.io/tutorials/install-radius/)
-  - If you are using an existing k8s cluster, you need to make sure you have cluster-admin permissions to install Radius and deploy applications
+- [Radius CLI](https://docs.radapp.io/tutorials/install-radius/#install-the-radius-cli)
+- An Azure Kubernetes cluster with [Radius installed](https://docs.radapp.io/tutorials/install-radius/#install-radius)
+  - If you are using an existing Azure Kubernetes cluster, you need to make sure you have cluster-admin permissions to install Radius and deploy applications
+- If you are using a new Azure subscription, certain resource providers may not be registered by default. Follow the [instructions](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/register-resource-provider) to add the following resource providers to your subscription: Microsoft.Storage, Microsoft.DBforPostgreSQL, Microsoft.ContainerInstance, Microsoft.OperationalInsights, Microsoft.Search, Microsoft.CognitiveServices
 
 ---
 
@@ -100,8 +101,7 @@ az account show
 Verify Radius CLI is installed
 
 ```bash
-
-rad --version
+rad version
 ```
 
 you should see an output similar to this:
@@ -156,6 +156,15 @@ You can verify the types were created:
 
 ```bash
 rad resource-type list
+```
+
+```
+TYPE                                    NAMESPACE                APIVERSION
+Applications.Core/applications          Applications.Core        ["2023-10-01-preview"]
+...
+Radius.AI/agents                        Radius.AI                ["2025-08-01-preview"]
+Radius.Data/postgreSqlDatabases         Radius.Data              ["2025-08-01-preview"]
+Radius.Storage/blobStorages             Radius.Storage           ["2025-08-01-preview"]
 ```
 
 ### Step 2: Bicep extensions
@@ -249,8 +258,7 @@ az group create --name customer-agent --location <location>
 You need to grant the Radius control plane permission to deploy resources to this resource group. Run the following command and follow the instructions to assign the "Owner" role to the Radius service principal for the `customer-agent` resource group:
 
 ```bash
-  az ad sp create-for-rbac --name "radius-sp" --role Owner \
-  --scopes /subscriptions/<subscription-id>/resourceGroups/<resource-group>
+az ad sp create-for-rbac --name "radius-sp" --role Owner --scopes /subscriptions/<subscription-id>/resourceGroups/<resource-group>
 ```
 
 ```
@@ -266,12 +274,23 @@ Create a Radius credential with the service principal details:
 
 ```bash
 rad credential register azure sp --client-id myClientId  --client-secret myClientSecret  --tenant-id myTenantId
-``` 
+```
+
+```
+Registering credential for "azure" cloud provider in Radius installation "Kubernetes (context=agent-re)"...
+Successfully registered credential for "azure" cloud provider. Tokens may take up to 30 seconds to refresh.
+```
 
 Check if the credential is registered:
 
 ```bash
 rad credential list
+```
+
+```
+Listing credentials for all cloud providers for Radius installation "Kubernetes (context=agent-re)"...
+PROVIDER  REGISTERED
+azure     true
 ```
 
 Now deploy the environment. This will create the environment, register the recipes, and provision the shared PostgreSQL and Blob Storage resources:
@@ -442,7 +461,7 @@ rad app delete -a customer-agent
 
 > [!NOTE]
 >
-> This deletes the Radius application and its recipe-provisioned Azure resources (OpenAI, Search, etc.). The shared environment resources (PostgreSQL, Blob Storage) deployed via `env.bicep` are **not** deleted — they belong to the environment, not the application.
+> This deletes the Radius application and recipe-provisioned Azure resources (OpenAI, Search, etc.). The shared environment resources (PostgreSQL, Blob Storage) deployed via `env.bicep` are **not** deleted — they belong to the environment, not the application.
 >
 > To fully clean up Azure resources, delete the resource group:
 > ```bash

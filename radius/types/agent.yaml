@@ -37,9 +37,6 @@ types:
             model:
               type: string
               description: "(Optional) The Azure OpenAI model name. Defaults to 'gpt-4.1-mini'."
-            knowledgeBase:
-              type: string
-              description: "(Optional) The AI Search index name. Defaults to 'agent-kb'."
             enableObservability:
               type: boolean
               description: "(Optional) Enable Application Insights for monitoring. Defaults to true."

@@ -16,7 +16,7 @@ var application = context.resource.properties.application
 var environment = context.resource.properties.environment
 var prompt = context.resource.properties.prompt
 var model = context.resource.properties.?model ?? 'gpt-4.1-mini'
-var knowledgeBase = context.resource.properties.?knowledgeBase ?? 'agent-kb'
+var knowledgeBase = '${name}-kb'
 var enableObservability = context.resource.properties.?enableObservability ?? true
 var agentImage = 'ghcr.io/reshrahim/agent-runtime:3.0'
 var openAiSkuName = 'S0'
@@ -44,8 +44,6 @@ var tags = {
 // ── Managed Identity ────────────────────────────────────────
 // Used by the deployment script to set up AI Search indexes.
 // The agent-runtime container uses API keys instead of managed identity
-// because workload identity federation requires AKS-specific setup
-// (service account annotation + federated credential) that varies per cluster.
 
 resource agentIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: '${name}-identity'
