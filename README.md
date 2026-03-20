@@ -80,9 +80,9 @@ Before you begin, you need:
 
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) with an active subscription
 - [Radius CLI](https://docs.radapp.io/tutorials/install-radius/#install-the-radius-cli)
-- An Azure Kubernetes cluster with [Radius installed](https://docs.radapp.io/tutorials/install-radius/#install-radius)
-  - If you are using an existing Azure Kubernetes cluster, you need to make sure you have cluster-admin permissions to install Radius and deploy applications
-- If you are using a new Azure subscription, certain resource providers may not be registered by default. Follow the [instructions](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/register-resource-provider) to add the following resource providers to your subscription: Microsoft.Storage, Microsoft.DBforPostgreSQL, Microsoft.ContainerInstance, Microsoft.OperationalInsights, Microsoft.Search, Microsoft.CognitiveServices
+- An Azure Kubernetes Service (AKS) cluster with [Radius installed](https://docs.radapp.io/tutorials/install-radius/#install-radius)
+  - If you are using an existing AKS cluster, you need to make sure you have cluster-admin permissions to install Radius and deploy applications
+- If you are using a new Azure subscription, certain resource providers may not be registered by default. Follow the [instructions](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider-1) to add the following resource providers to your subscription: Microsoft.Storage, Microsoft.DBforPostgreSQL, Microsoft.ContainerInstance, Microsoft.OperationalInsights, Microsoft.Search, Microsoft.CognitiveServices
 
 ---
 
