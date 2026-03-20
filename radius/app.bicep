@@ -68,7 +68,7 @@ resource agent 'Radius.AI/agents@2025-08-01-preview' = {
     environment: environment
     prompt: prompt
     model: model
-    enableObservability: false
+    enableObservability: true
     connections: {
       postgres: {
         source: postgresql.id
