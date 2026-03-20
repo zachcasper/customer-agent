@@ -3,8 +3,7 @@ types:
   agents:
     description: |
       Radius.AI/agents provisions an AI agent with a managed Azure OpenAI model,
-      optional knowledge retrieval (Azure AI Search), and optional observability
-      (Application Insights). The agent connects to shared environment resources
+      and optional observability (Application Insights). The agent connects to shared environment resources
       such as blob storage and PostgreSQL databases via Radius connections.
 
       ```
