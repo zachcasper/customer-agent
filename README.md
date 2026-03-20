@@ -6,7 +6,7 @@ The application is a customer support agent for the fictional **Contoso Online S
 
 ### Why
 
-Building AI applications today is hard. A developer who just wants to build a customer support agent goes through the toil of understanding infrastructure dependencies like Azure OpenAI deployments, configuring AI Search indexes, setting up managed identities with the right RBAC roles, provisioning storage accounts, current environments, and more over conforming to the requirements of the enterprise. This creates a high barrier to entry for developers and slows down innovation.
+Building AI applications today is hard. A developer who just wants to build a AI agent goes through the toil of understanding infrastructure dependencies like Azure OpenAI deployments, configuring AI Search indexes, setting up managed identities with the right RBAC roles, provisioning storage accounts, understanding current cloud environments, and more over following the requirements of the enterprise. This creates a high barrier to entry for developers and slows down innovation.
 
 Radius solves this by enabling **platform engineers** codify all that infrastructure into reusable **Recipes**. The developer just declares what they need in a simple `app.bicep` (an AI agent, a database, a frontend) and everything else is handled behind the scenes.
 
