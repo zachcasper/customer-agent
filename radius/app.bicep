@@ -53,7 +53,7 @@ resource postgresql 'Radius.Data/postgreSqlDatabases@2025-08-01-preview' existin
 
 // ── Existing shared resource ────────────────────────────────
 resource blobstorage 'Radius.Storage/blobStorages@2025-08-01-preview' existing = {
-  // TODO: name: contoso-knowledge-base
+  // TODO: name: 'contoso-knowledge-base'
   name: 'blobstorage'
 }
 
