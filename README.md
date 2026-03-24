@@ -92,13 +92,13 @@ cd customer-agent
 
 Run the setup script to create an Azure resource group, AKS cluster, service principal, and register the resource providers required for this application:
 
+**Bash**
 ```bash
-# Bash
 ./scripts/setup-azure.sh --location westus3 --resource-group customer-agent --cluster-name customer-agent-aks
 ```
 
+**PowerShell**
 ```powershell
-# PowerShell
 bash ./scripts/setup-azure.sh --location westus3 --resource-group customer-agent --cluster-name customer-agent-aks
 ```
 
@@ -253,16 +253,16 @@ rad group create azure
 
 Register the Azure credential using the service principal from Step 2:
 
+**Bash**
 ```bash
-# Bash
 source .azure-sp.env && rad credential register azure sp \
   --client-id $AZURE_CLIENT_ID \
   --client-secret $AZURE_CLIENT_SECRET \
   --tenant-id $AZURE_TENANT_ID
 ```
 
+**PowerShell**
 ```powershell
-# PowerShell
 Get-Content .azure-sp.env | ForEach-Object {
   $name, $value = $_ -split '=', 2
   Set-Item -Path Env:$name -Value $value
@@ -287,15 +287,15 @@ azure     true
 
 Now deploy the environment. This will create the environment, register the recipes, and provision the shared PostgreSQL and Blob Storage resources:
 
+**Bash**
 ```bash
-# Bash
 source .azure-sp.env && rad deploy radius/env.bicep --group azure \
   -parameters azureSubscriptionId=$AZURE_SUBSCRIPTION_ID \
   -parameters azureResourceGroup=$AZURE_RESOURCE_GROUP
 ```
 
+**PowerShell**
 ```powershell
-# PowerShell
 Get-Content .azure-sp.env | ForEach-Object {
   $name, $value = $_ -split '=', 2
   Set-Item -Path Env:$name -Value $value
@@ -312,16 +312,16 @@ rad deploy radius/env.bicep --group azure `
 
 Create a workspace so the `rad` CLI knows which environment and group to use by default:
 
+**Bash**
 ```bash
-# Bash
 rad workspace create kubernetes azure \
   --context $(kubectl config current-context) \
   --environment azure \
   --group azure
 ```
 
+**PowerShell**
 ```powershell
-# PowerShell
 rad workspace create kubernetes azure `
   --context (kubectl config current-context) `
   --environment azure `
@@ -367,9 +367,8 @@ The `knowledge-base/` folder contains three PDF documents:
 
 Upload them to the blob storage account that was provisioned in the previous step:
 
+**Bash**
 ```bash
-# Bash
-
 # Get the storage account name (provisioned by the blobstorage recipe)
 STORAGE_ACCOUNT=$(az storage account list --resource-group customer-agent \
   --query "[?tags.\"radius-resource-type\"=='Radius.Storage/blobStorages'].name" -o tsv)
@@ -383,9 +382,8 @@ az storage blob upload-batch \
   --overwrite
 ```
 
+**PowerShell**
 ```powershell
-# PowerShell
-
 # Get the storage account name (provisioned by the blobstorage recipe)
 $STORAGE_ACCOUNT = az storage account list `
   --resource-group customer-agent `
